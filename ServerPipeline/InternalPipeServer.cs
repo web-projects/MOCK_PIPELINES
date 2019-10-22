@@ -19,6 +19,11 @@ namespace MockPipelines.NamedPipeline
         private const int BufferSize = 2048;
         public readonly string Id;
 
+        // Client Messages - Insert Card, Remove Card
+        private string displayText = "{{ \"DALActionRequest\": {{ \"DeviceUIRequest\": {{ \"UIAction\": \"Display\", \"DisplayText\": [\"{0}\"] }} }} }}";
+        private string getPINCode  = "{{ \"DALActionRequest\": {{ \"DeviceUIRequest\": {{ \"UIAction\": \"InputRequest\", \"EntryType\": \"PIN\", \"MinLength\": \"4\", \"MaxLength\": \"4\", \"AlphaNumeric\": \"false\", \"ReportCardPresented\": \"true\", \"DisplayText\": [\"{0}\"] }} }} }}";
+        private string getZipCode  = "{{ \"DALActionRequest\": {{ \"DeviceUIRequest\": {{ \"UIAction\": \"InputRequest\", \"EntryType\": \"ZIP\", \"MinLength\": \"5\", \"MaxLength\": \"5\", \"AlphaNumeric\": \"false\", \"ReportCardPresented\": \"true\", \"DisplayText\": [\"{0}\"] }} }} }}";
+
         #endregion
 
         /********************************************************************************************************/
@@ -119,12 +124,10 @@ namespace MockPipelines.NamedPipeline
                 var info = new Info();
 
                 // Get the write bytes and append them
-                byte [] writeBytes = Encoding.ASCII.GetBytes(message);
+                byte [] writeBytes = Encoding.ASCII.GetBytes(string.Format(displayText, message));
+                Array.Copy(writeBytes, writeBytes.GetLowerBound(0), info.Buffer, info.Buffer.GetLowerBound(0), writeBytes.Length);
                 info.StringBuilder.Append(Encoding.UTF8.GetString(info.Buffer, 0, writeBytes.Length));
-                //BeginWrite(info);
-                //_pipeServer.Write(writeBytes, 0, writeBytes.Length);
-                //_pipeServer.WaitForPipeDrain();
-                //_pipeServer.Flush();
+                BeginWrite(info);
                 Console.WriteLine($"server: message to client=[{message}]");
             }
         }
@@ -136,57 +139,12 @@ namespace MockPipelines.NamedPipeline
         /********************************************************************************************************/
         #region private methods
 
-        private void BeginRead(Info info)
-        {
-            try
-            {
-                _pipeServer.BeginRead(info.Buffer, 0, BufferSize, EndReadCallBack, info);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex);
-                throw;
-            }
-        }
-
-        private void BeginWrite(Info info)
-        {
-            try
-            {
-                _pipeServer.BeginWrite(info.Buffer, 0, BufferSize, EndWriteCallBack, info);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex);
-                throw;
-            }
-        }
-
-        private void WaitForConnectionCallBack(IAsyncResult result)
-        {
-            if (!_isStopping)
-            {
-                lock (_lockingObject)
-                {
-                    if (!_isStopping)
-                    {
-                        // Call EndWaitForConnection to complete the connection operation
-                        _pipeServer.EndWaitForConnection(result);
-
-                        OnConnected();
-
-                        BeginRead(new Info());
-                    }
-                }
-            }
-        }
-
         private void EndReadCallBack(IAsyncResult result)
         {
             var readBytes = _pipeServer.EndRead(result);
             if (readBytes > 0)
             {
-                var info = (Info) result.AsyncState;
+                var info = (Info)result.AsyncState;
 
                 // Get the read bytes and append them
                 info.StringBuilder.Append(Encoding.UTF8.GetString(info.Buffer, 0, readBytes));
@@ -222,6 +180,19 @@ namespace MockPipelines.NamedPipeline
             }
         }
 
+        private void BeginRead(Info info)
+        {
+            try
+            {
+                _pipeServer.BeginRead(info.Buffer, 0, BufferSize, EndReadCallBack, info);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+                throw;
+            }
+        }
+
         private void EndWriteCallBack(IAsyncResult result)
         {
             if (_pipeServer.IsConnected)
@@ -229,6 +200,38 @@ namespace MockPipelines.NamedPipeline
                 _pipeServer.EndWrite(result);
                 _pipeServer.WaitForPipeDrain();
                 _pipeServer.Flush();
+            }
+        }
+
+        private void BeginWrite(Info info)
+        {
+            try
+            {
+                _pipeServer.BeginWrite(info.Buffer, 0, BufferSize, EndWriteCallBack, info);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+                throw;
+            }
+        }
+
+        private void WaitForConnectionCallBack(IAsyncResult result)
+        {
+            if (!_isStopping)
+            {
+                lock (_lockingObject)
+                {
+                    if (!_isStopping)
+                    {
+                        // Call EndWaitForConnection to complete the connection operation
+                        _pipeServer.EndWaitForConnection(result);
+
+                        OnConnected();
+
+                        BeginRead(new Info());
+                    }
+                }
             }
         }
 

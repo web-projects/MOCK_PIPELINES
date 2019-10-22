@@ -1,5 +1,6 @@
 ﻿using MockPipelines.NamedPipeline.Helpers;
 using MockPipelines.NamedPipeline.Interfaces;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -100,9 +101,22 @@ namespace MockPipelines.NamedPipeline
             server.MessageReceivedEvent -= MessageReceivedHandler;
         }
 
+        private string RetrieveMessage(string message)
+        {
+            string result = string.Empty;
+            string value = System.Text.RegularExpressions.Regex.Replace(message.Trim('\"'), "[\\\\]+", string.Empty);
+            DalActionResponseRoot request = JsonConvert.DeserializeObject<DalActionResponseRoot>(value);
+            if (request != null)
+            {
+                result = request.DALActionResponse.DeviceUIResponse.DisplayText[0];
+            }
+
+            return result;
+        }
+
         private void OnMessageReceived(MessageReceivedEventArgs eventArgs)
         {
-            Console.WriteLine($"server: message received=[{eventArgs.Message}]");
+            Console.WriteLine($"server: client message received=[{RetrieveMessage(eventArgs.Message)}]");
             _synchronizationContext.Post(e => MessageReceivedEvent.SafeInvoke(this, (MessageReceivedEventArgs)e), eventArgs);
         }
 

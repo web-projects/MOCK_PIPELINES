@@ -20,6 +20,9 @@ namespace MockPipelines.NamedPipeline
         private readonly object _lockingObject = new object();
         private const int BufferSize = 2048;
 
+        // Client Messages - Insert Card, Remove Card
+        private string displayText = "{{ \"DALActionResponse\": {{ \"DeviceUIResponse\": {{ \"UIAction\": \"Display\", \"DisplayText\": [\"{0}\"] }} }} }}";
+
         #endregion
 
         /********************************************************************************************************/
@@ -48,7 +51,6 @@ namespace MockPipelines.NamedPipeline
 
         public InternalPipeClient(string serverId)
         {
-            //_pipeClient = pipeline;
             _pipeClient = new NamedPipeClientStream(".", serverId, PipeDirection.InOut, PipeOptions.Asynchronous);
         }
 
@@ -68,40 +70,12 @@ namespace MockPipelines.NamedPipeline
         /********************************************************************************************************/
         #region private methods
 
-        private void BeginRead(Info info)
-        {
-            try
-            {
-                _pipeClient?.BeginRead(info.Buffer, 0, BufferSize, EndReadCallBack, info);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex);
-                throw;
-            }
-        }
-
-        private void BeginWrite(Info info)
-        {
-            try
-            {
-                _pipeClient?.BeginWrite(info.Buffer, 0, BufferSize, EndWriteCallBack, info);
-                _pipeClient.WaitForPipeDrain();
-                _pipeClient.Flush();
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex);
-                throw;
-            }
-        }
-
         private void EndReadCallBack(IAsyncResult result)
         {
             var readBytes = _pipeClient.EndRead(result);
             if (readBytes > 0)
             {
-                var info = (Info) result.AsyncState;
+                var info = (Info)result.AsyncState;
 
                 // Get the read bytes and append them
                 info.StringBuilder.Append(Encoding.UTF8.GetString(info.Buffer, 0, readBytes));
@@ -136,9 +110,40 @@ namespace MockPipelines.NamedPipeline
             }
         }
 
+        private void BeginRead(Info info)
+        {
+            try
+            {
+                _pipeClient?.BeginRead(info.Buffer, 0, BufferSize, EndReadCallBack, info);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+                throw;
+            }
+        }
+
         private void EndWriteCallBack(IAsyncResult result)
         {
-            _pipeClient.EndWrite(result);
+            if (_pipeClient.IsConnected)
+            { 
+                _pipeClient.EndWrite(result);
+                _pipeClient.WaitForPipeDrain();
+                _pipeClient.Flush();
+            }
+        }
+
+        private void BeginWrite(Info info)
+        {
+            try
+            {
+                _pipeClient?.BeginWrite(info.Buffer, 0, BufferSize, EndWriteCallBack, info);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+                throw;
+            }
         }
 
         private void OnMessageReceived(string message)
@@ -166,6 +171,7 @@ namespace MockPipelines.NamedPipeline
             {
                 Console.WriteLine("client started. Waiting for server connection...");
                 _pipeClient.Connect(TRY_CONNECT_TIMEOUT);
+                _pipeClient.ReadMode = PipeTransmissionMode.Message;
                 BeginRead(new Info());
             }
             catch (Exception ex)
@@ -202,15 +208,13 @@ namespace MockPipelines.NamedPipeline
         {
             if (_pipeClient?.IsConnected ?? false)
             {
-                //var info = new Info();
+                var info = new Info();
 
                 // Get the write bytes and append them
-                byte[] writeBytes = Encoding.ASCII.GetBytes(message);
-                //info.StringBuilder.Append(Encoding.UTF8.GetString(info.Buffer, 0, writeBytes.Length));
-                //BeginWrite(info);
-                _pipeClient.Write(writeBytes, 0, writeBytes.Length);
-                _pipeClient.WaitForPipeDrain();
-                _pipeClient.Flush();
+                byte [] writeBytes = Encoding.ASCII.GetBytes(string.Format(displayText, message));
+                Array.Copy(writeBytes, writeBytes.GetLowerBound(0), info.Buffer, info.Buffer.GetLowerBound(0), writeBytes.Length);
+                info.StringBuilder.Append(Encoding.UTF8.GetString(info.Buffer, 0, info.Buffer.Length));
+                BeginWrite(info);
             }
         }
 

@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Newtonsoft.Json;
 
 namespace MockPipelines.NamedPipeline
 {
@@ -47,20 +48,10 @@ namespace MockPipelines.NamedPipeline
 
         private void StartNamedPipeClient()
         {
-            //_pipeClient = new NamedPipeClientStream(".", serverId, PipeDirection.InOut, PipeOptions.Asynchronous);
             client = new InternalPipeClient(serverId);
             client.MessageReceivedEvent += MessageReceivedHandler;
             client.Start();
-            //_pipeClient.Connect(TRY_CONNECT_TIMEOUT);
         }
-
-        /*private TaskResult EndWriteCallBack(IAsyncResult asyncResult)
-        {
-            //_pipeClient.EndWrite(asyncResult);
-            //_pipeClient.Flush();
-
-            return new TaskResult { IsSuccess = true };
-        }*/
 
         private void MessageReceivedHandler(object sender, MessageReceivedEventArgs eventArgs)
         {
@@ -69,8 +60,22 @@ namespace MockPipelines.NamedPipeline
 
         private void OnMessageReceived(MessageReceivedEventArgs eventArgs)
         {
-            Console.WriteLine($"client: message received=[{eventArgs.Message}]");
+            Console.WriteLine($"client: server message received=[{eventArgs.Message}]");
             _synchronizationContext.Post(e => MessageReceivedEvent.SafeInvoke(this, (MessageReceivedEventArgs)e), eventArgs);
+            ClientPipeMessage?.Invoke(this, new MessageEventArgs(RetrieveMessage(eventArgs.Message)));
+        }
+
+        private string RetrieveMessage(string message)
+        {
+            string result = string.Empty;
+            string value = System.Text.RegularExpressions.Regex.Replace(message.Trim('\"'), "[\\\\]+", string.Empty);
+            DalActionRequestRoot request = JsonConvert.DeserializeObject<DalActionRequestRoot>(value);
+            if (request != null)
+            {
+                result = request.DALActionRequest.DeviceUIRequest.DisplayText[0];
+            }
+
+            return result;
         }
 
         #endregion
@@ -100,45 +105,11 @@ namespace MockPipelines.NamedPipeline
 
         public void Stop()
         {
-            try
-            {
-                //_pipeClient.WaitForPipeDrain();
-            }
-            finally
-            {
-                //_pipeClient.Close();
-                //_pipeClient.Dispose();
+            if (client != null)
+            { 
+                client.Stop();
             }
         }
-
-        /*public Task<TaskResult> SendMessage(string message)
-        {
-            var taskCompletionSource = new TaskCompletionSource<TaskResult>();
-
-            if (_pipeClient.IsConnected)
-            {
-                var buffer = Encoding.UTF8.GetBytes(message);
-                _pipeClient.BeginWrite(buffer, 0, buffer.Length, asyncResult =>
-                {
-                    try
-                    {
-                        taskCompletionSource.SetResult(EndWriteCallBack(asyncResult));
-                    }
-                    catch (Exception ex)
-                    {
-                        taskCompletionSource.SetException(ex);
-                    }
-
-                }, null);
-            }
-            else
-            {
-                Logger.Error("Cannot send message, pipe is not connected");
-                throw new IOException("pipe is not connected");
-            }
-
-            return taskCompletionSource.Task;
-        }*/
 
         public void SendMessage(string message)
         {
