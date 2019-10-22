@@ -5,6 +5,14 @@ namespace MockPipelines.NamedPipeline
 {
     class Program
     {
+        static readonly string[] MESSAGES =
+        {
+            "Insert Card",
+            "Remove Card",
+            "Enter Zip Code",
+            "Enter PIN"
+        };
+
         static void Main(string[] args)
         {
             Console.WriteLine("Starting server namedpipeline...");
@@ -12,8 +20,21 @@ namespace MockPipelines.NamedPipeline
             if (serverpipe != null)
             {
                 serverpipe.Start();
-                //serverpipe.SendMessage("message from server");
-                Thread.Sleep(10000000);
+                int msgindex = 0;
+                for (int index = 0; index < 100000; index++)
+                {
+                    Thread.Sleep(5000);
+
+                    if (serverpipe.ClientConnected())
+                    {
+                        Thread.Sleep(1000);
+
+                        serverpipe.SendMessage($"{MESSAGES[msgindex++]}");
+                        if(msgindex > MESSAGES.Length - 1)
+                            msgindex = 0;
+                    }
+                }
+
                 serverpipe.Stop();
             }
         }

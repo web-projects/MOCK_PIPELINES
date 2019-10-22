@@ -2,6 +2,7 @@
 using MockPipelines.NamedPipeline.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
@@ -10,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Newtonsoft.Json;
 
 namespace MockPipelines.NamedPipeline
 {
@@ -22,77 +24,71 @@ namespace MockPipelines.NamedPipeline
 
         const int TRY_CONNECT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
-        private readonly NamedPipeClientStream _pipeClient;
-
+        //private NamedPipeClientStream _pipeClient;
+        private InternalPipeClient client;
+        private string serverId;
+        private readonly SynchronizationContext _synchronizationContext;
         public event EventHandler<MessageEventArgs> ClientPipeMessage;
 
         #endregion
 
         /********************************************************************************************************/
-        // INTERFACE SECTION
+        // EVENTS SECTION
         /********************************************************************************************************/
-        #region -- ICommunicationClient implementation --
+        #region -- events --
 
-        public void Start()
-        {
-            _pipeClient.Connect(TRY_CONNECT_TIMEOUT);
-        }
-
-        public void Stop()
-        {
-            try
-            {
-                _pipeClient.WaitForPipeDrain();
-            }
-            finally
-            {
-                _pipeClient.Close();
-                _pipeClient.Dispose();
-            }
-        }
-
-        public Task<TaskResult> SendMessage(string message)
-        {
-            var taskCompletionSource = new TaskCompletionSource<TaskResult>();
-
-            if (_pipeClient.IsConnected)
-            {
-                var buffer = Encoding.UTF8.GetBytes(message);
-                _pipeClient.BeginWrite(buffer, 0, buffer.Length, asyncResult =>
-                {
-                    try
-                    {
-                        taskCompletionSource.SetResult(EndWriteCallBack(asyncResult));
-                    }
-                    catch (Exception ex)
-                    {
-                        taskCompletionSource.SetException(ex);
-                    }
-
-                }, null);
-            }
-            else
-            {
-                Logger.Error("Cannot send message, pipe is not connected");
-                throw new IOException("pipe is not connected");
-            }
-
-            return taskCompletionSource.Task;
-        }
+        public event EventHandler<MessageReceivedEventArgs> MessageReceivedEvent;
 
         #endregion
-
+ 
         /********************************************************************************************************/
         // PRIVATE METHODS SECTION
         /********************************************************************************************************/
         #region -- private methods --
 
-        private TaskResult EndWriteCallBack(IAsyncResult asyncResult)
+        private void StartNamedPipeClient()
         {
-            _pipeClient.EndWrite(asyncResult);
-            _pipeClient.Flush();
+            client = new InternalPipeClient(serverId);
+            client.MessageReceivedEvent += MessageReceivedHandler;
+            client.Start();
+        }
 
-            return new TaskResult { IsSuccess = true };
+        private void MessageReceivedHandler(object sender, MessageReceivedEventArgs eventArgs)
+        {
+            OnMessageReceived(eventArgs);
+        }
+
+        private void OnMessageReceived(MessageReceivedEventArgs eventArgs)
+        {
+            Console.WriteLine($"client: server message received=[{eventArgs.Message}]");
+            _synchronizationContext.Post(e => MessageReceivedEvent.SafeInvoke(this, (MessageReceivedEventArgs)e), eventArgs);
+            ClientPipeMessage?.Invoke(this, new MessageEventArgs(RetrieveMessage(eventArgs.Message)));
+        }
+
+        private string RetrieveMessage(string message)
+        {
+            string result = string.Empty;
+            string value = System.Text.RegularExpressions.Regex.Replace(message.Trim('\"'), "[\\\\]+", string.Empty);
+            DalActionRequestRoot request = JsonConvert.DeserializeObject<DalActionRequestRoot>(value);
+            if (request != null)
+            {
+                result = request.DALActionRequest.DeviceUIRequest.DisplayText[0];
+            }
+
+            return result;
+        }
+
+        #endregion
+
+        /********************************************************************************************************/
+        // CONSTRUCTION SECTION
+        /********************************************************************************************************/
+        #region -- construction --
+
+        public ClientPipeline(string serverId)
+        {
+            _synchronizationContext = AsyncOperationManager.SynchronizationContext;
+            this.serverId = serverId;
         }
 
         #endregion
@@ -102,72 +98,23 @@ namespace MockPipelines.NamedPipeline
         /********************************************************************************************************/
         #region -- implementation --
 
-        public ClientPipeline(string serverId)
+        public void Start()
         {
-            _pipeClient = new NamedPipeClientStream(".", serverId, PipeDirection.InOut, PipeOptions.Asynchronous);
+            StartNamedPipeClient();
         }
 
-        /*public void StartPipe()
+        public void Stop()
         {
-            bool alive = true;
-            string text = string.Empty;
-
-            while (alive)
-            {
-                text = string.Empty;
-
-                using (NamedPipeClientStream pipeClient = new NamedPipeClientStream(".", "DeviceEmulatorPipe", PipeDirection.In, PipeOptions.Asynchronous))
-                {
-                    // Connect to the pipe or wait until the pipe is available.
-                    mainForm.Invoke(new MethodInvoker(() =>
-                    {
-                        ClientPipeMessage?.Invoke(this, new MessageEventArgs("Attempting to connect to pipe..."));
-                        Thread.Sleep(1000);
-                    }));
-                    pipeClient.Connect();
-
-                    mainForm.Invoke(new MethodInvoker(() =>
-                    {
-                        ClientPipeMessage?.Invoke(this, new MessageEventArgs("Connected to pipe."));
-                        Thread.Sleep(1000);
-                        ClientPipeMessage?.Invoke(this, new MessageEventArgs($"There are currently {pipeClient.NumberOfServerInstances} pipe server instances open."));
-                    }));
-
-                    using (StreamReader sr = new StreamReader(pipeClient))
-                    {
-                        string intext;
-                        while ((intext = sr.ReadLine()) != null && alive)
-                        {
-                            text = intext;
-                            Debug.WriteLine($"Received from server: {text}");
-                            mainForm.Invoke(new MethodInvoker(() =>
-                            {
-                                ClientPipeMessage?.Invoke(this, new MessageEventArgs($"Received from server: {text}"));
-                                Thread.Sleep(2000);
-                            }));
-                            if (text?.Equals("quit", StringComparison.CurrentCultureIgnoreCase) ?? false)
-                                alive = false;
-                        }
-                    }
-
-                    if (alive && text != null && text != string.Empty)
-                    {
-                        using (NamedPipeClientStream pipeClientWriter = new NamedPipeClientStream(".", "DeviceEmulatorPipe", PipeDirection.Out, PipeOptions.Asynchronous))
-                        {
-                            pipeClientWriter.Connect();
-
-                            using (StreamWriter sw = new StreamWriter(pipeClientWriter))
-                            {
-                                sw.AutoFlush = true;
-                                char[] charArray = text.ToCharArray();
-                                Array.Reverse(charArray);
-                                sw.WriteLine(new string(charArray));
-                            }
-                        }
-                    }
-                }
+            if (client != null)
+            { 
+                client.Stop();
             }
-        }*/
+        }
+
+        public void SendMessage(string message)
+        {
+            client?.SendMessage(message);
+        }
 
         #endregion
     }

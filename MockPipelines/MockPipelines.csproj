@@ -2,12 +2,15 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
     <StartupObject></StartupObject>
     <RootNamespace>MockPipelines.NamedPipeline</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\ServerPipeline\bin\Debug\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="ServerPipeline">
       <HintPath>..\ServerPipeline\bin\Debug\ServerPipeline.dll</HintPath>
     </Reference>

@@ -17,5 +17,5 @@
 /.vs
 
 # Ignore build files
-/bin/*
-/obj/*
+bin/
+obj/
