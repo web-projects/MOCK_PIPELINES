@@ -6,18 +6,19 @@ using MockPipelines.NamedPipeline.Helpers;
 
 namespace MockPipelines.NamedPipeline
 {
-    internal class InternalPipeServer : ICommunicationServer
+    internal class InternalPipeClient : ICommunicationClient
     {
         /********************************************************************************************************/
         // ATTRIBUTES SECTION
         /********************************************************************************************************/
         #region -- attributes --
 
-        private readonly NamedPipeServerStream _pipeServer;
+        const int TRY_CONNECT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+        private readonly NamedPipeClientStream _pipeClient;
         private bool _isStopping;
         private readonly object _lockingObject = new object();
         private const int BufferSize = 2048;
-        public readonly string Id;
 
         #endregion
 
@@ -45,11 +46,10 @@ namespace MockPipelines.NamedPipeline
         /********************************************************************************************************/
         #region -- constructor --
 
-        public InternalPipeServer(string pipeName, int maxNumberOfServerInstances)
+        public InternalPipeClient(string serverId)
         {
-            _pipeServer = new NamedPipeServerStream(pipeName, PipeDirection.InOut, maxNumberOfServerInstances,
-                PipeTransmissionMode.Message, PipeOptions.Asynchronous);
-            Id = Guid.NewGuid().ToString();
+            //_pipeClient = pipeline;
+            _pipeClient = new NamedPipeClientStream(".", serverId, PipeDirection.InOut, PipeOptions.Asynchronous);
         }
 
         #endregion
@@ -59,75 +59,7 @@ namespace MockPipelines.NamedPipeline
         /********************************************************************************************************/
         #region events
 
-        public event EventHandler<ClientConnectedEventArgs> ClientConnectedEvent;
-        public event EventHandler<ClientDisconnectedEventArgs> ClientDisconnectedEvent;
         public event EventHandler<MessageReceivedEventArgs> MessageReceivedEvent;
-
-        #endregion
-
-        /********************************************************************************************************/
-        // PUBLIC METHODS SECTION
-        /********************************************************************************************************/
-        #region public methods
-
-        public string ServerId
-        {
-            get { return Id; }
-        }
-
-        public void Start()
-        {
-            try
-            {
-                Console.WriteLine("server started. Waiting for client connection...");
-                _pipeServer.BeginWaitForConnection(WaitForConnectionCallBack, null);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex);
-                throw;
-            }
-        }
-
-        public void Stop()
-        {
-            _isStopping = true;
-
-            try
-            {
-                if (_pipeServer.IsConnected)
-                {
-                    _pipeServer.Disconnect();
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex);
-                throw;
-            }
-            finally
-            {
-                _pipeServer.Close();
-                _pipeServer.Dispose();
-            }
-        }
-
-        public void SendMessage(string message)
-        {
-            if (_pipeServer.IsConnected)
-            {
-                var info = new Info();
-
-                // Get the write bytes and append them
-                byte [] writeBytes = Encoding.ASCII.GetBytes(message);
-                info.StringBuilder.Append(Encoding.UTF8.GetString(info.Buffer, 0, writeBytes.Length));
-                //BeginWrite(info);
-                //_pipeServer.Write(writeBytes, 0, writeBytes.Length);
-                //_pipeServer.WaitForPipeDrain();
-                //_pipeServer.Flush();
-                Console.WriteLine($"server: message to client=[{message}]");
-            }
-        }
 
         #endregion
 
@@ -140,7 +72,7 @@ namespace MockPipelines.NamedPipeline
         {
             try
             {
-                _pipeServer.BeginRead(info.Buffer, 0, BufferSize, EndReadCallBack, info);
+                _pipeClient?.BeginRead(info.Buffer, 0, BufferSize, EndReadCallBack, info);
             }
             catch (Exception ex)
             {
@@ -153,7 +85,9 @@ namespace MockPipelines.NamedPipeline
         {
             try
             {
-                _pipeServer.BeginWrite(info.Buffer, 0, BufferSize, EndWriteCallBack, info);
+                _pipeClient?.BeginWrite(info.Buffer, 0, BufferSize, EndWriteCallBack, info);
+                _pipeClient.WaitForPipeDrain();
+                _pipeClient.Flush();
             }
             catch (Exception ex)
             {
@@ -162,28 +96,9 @@ namespace MockPipelines.NamedPipeline
             }
         }
 
-        private void WaitForConnectionCallBack(IAsyncResult result)
-        {
-            if (!_isStopping)
-            {
-                lock (_lockingObject)
-                {
-                    if (!_isStopping)
-                    {
-                        // Call EndWaitForConnection to complete the connection operation
-                        _pipeServer.EndWaitForConnection(result);
-
-                        OnConnected();
-
-                        BeginRead(new Info());
-                    }
-                }
-            }
-        }
-
         private void EndReadCallBack(IAsyncResult result)
         {
-            var readBytes = _pipeServer.EndRead(result);
+            var readBytes = _pipeClient.EndRead(result);
             if (readBytes > 0)
             {
                 var info = (Info) result.AsyncState;
@@ -191,7 +106,7 @@ namespace MockPipelines.NamedPipeline
                 // Get the read bytes and append them
                 info.StringBuilder.Append(Encoding.UTF8.GetString(info.Buffer, 0, readBytes));
 
-                if (!_pipeServer.IsMessageComplete) // Message is not complete, continue reading
+                if (!_pipeClient.IsMessageComplete) // Message is not complete, continue reading
                 {
                     BeginRead(info);
                 }
@@ -214,7 +129,6 @@ namespace MockPipelines.NamedPipeline
                     {
                         if (!_isStopping)
                         {
-                            OnDisconnected();
                             Stop();
                         }
                     }
@@ -224,12 +138,7 @@ namespace MockPipelines.NamedPipeline
 
         private void EndWriteCallBack(IAsyncResult result)
         {
-            if (_pipeServer.IsConnected)
-            {
-                _pipeServer.EndWrite(result);
-                _pipeServer.WaitForPipeDrain();
-                _pipeServer.Flush();
-            }
+            _pipeClient.EndWrite(result);
         }
 
         private void OnMessageReceived(string message)
@@ -244,19 +153,64 @@ namespace MockPipelines.NamedPipeline
             }
         }
 
-        private void OnConnected()
+        #endregion
+
+        /********************************************************************************************************/
+        // PUBLIC METHODS SECTION
+        /********************************************************************************************************/
+        #region public methods
+
+        public void Start()
         {
-            if (ClientConnectedEvent != null)
+            try
             {
-                ClientConnectedEvent(this, new ClientConnectedEventArgs {ClientId = Id});
+                Console.WriteLine("client started. Waiting for server connection...");
+                _pipeClient.Connect(TRY_CONNECT_TIMEOUT);
+                BeginRead(new Info());
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+                throw;
             }
         }
 
-        private void OnDisconnected()
+        public void Stop()
         {
-            if (ClientDisconnectedEvent != null)
+            _isStopping = true;
+
+            try
             {
-                ClientDisconnectedEvent(this, new ClientDisconnectedEventArgs {ClientId = Id});
+                if (_pipeClient.IsConnected)
+                {
+                    _pipeClient.WaitForPipeDrain();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+                throw;
+            }
+            finally
+            {
+                _pipeClient.Close();
+                _pipeClient.Dispose();
+            }
+        }
+
+        public void SendMessage(string message)
+        {
+            if (_pipeClient?.IsConnected ?? false)
+            {
+                //var info = new Info();
+
+                // Get the write bytes and append them
+                byte[] writeBytes = Encoding.ASCII.GetBytes(message);
+                //info.StringBuilder.Append(Encoding.UTF8.GetString(info.Buffer, 0, writeBytes.Length));
+                //BeginWrite(info);
+                _pipeClient.Write(writeBytes, 0, writeBytes.Length);
+                _pipeClient.WaitForPipeDrain();
+                _pipeClient.Flush();
             }
         }
 

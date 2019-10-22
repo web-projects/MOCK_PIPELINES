@@ -26,6 +26,7 @@ namespace MockPipelines.NamedPipeline
         private readonly SynchronizationContext _synchronizationContext;
         private readonly IDictionary<string, ICommunicationServer> _servers; // ConcurrentDictionary is thread safe
         private const int MaxNumberOfServerInstances = 10;
+        private bool clientConnected;
         #endregion
 
         /********************************************************************************************************/
@@ -38,7 +39,6 @@ namespace MockPipelines.NamedPipeline
         public event EventHandler<ClientDisconnectedEventArgs> ClientDisconnectedEvent;
 
         #endregion
-
 
         /********************************************************************************************************/
         // CONSTRUCTION SECTION
@@ -108,10 +108,9 @@ namespace MockPipelines.NamedPipeline
 
         private void OnClientConnected(ClientConnectedEventArgs eventArgs)
         {
+            clientConnected = true;
             Console.WriteLine($"server: client connected with ID=[{eventArgs.ClientId}]");
             _synchronizationContext.Post(e => ClientConnectedEvent.SafeInvoke(this, (ClientConnectedEventArgs)e), eventArgs);
-
-            SendMessage("message from server");
         }
 
         private void OnClientDisconnected(ClientDisconnectedEventArgs eventArgs)
@@ -129,6 +128,7 @@ namespace MockPipelines.NamedPipeline
 
         private void ClientDisconnectedHandler(object sender, ClientDisconnectedEventArgs eventArgs)
         {
+            clientConnected = false;
             OnClientDisconnected(eventArgs);
 
             StopNamedPipeServer(eventArgs.ClientId);
@@ -172,6 +172,11 @@ namespace MockPipelines.NamedPipeline
             }
 
             _servers.Clear();
+        }
+
+        public bool ClientConnected()
+        {
+            return clientConnected;
         }
 
         public void SendMessage(string message)

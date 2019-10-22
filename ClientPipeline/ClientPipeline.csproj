@@ -54,11 +54,13 @@
   <ItemGroup>
     <Compile Include="ClientPipeline.cs" />
     <Compile Include="Helpers\DalActionRequest.cs" />
+    <Compile Include="Helpers\EventHandlerExtensions.cs" />
     <Compile Include="Helpers\Logger.cs" />
     <Compile Include="Helpers\MessageEventArgs.cs" />
     <Compile Include="Helpers\TaskResult.cs" />
     <Compile Include="Interfaces\ICommunication.cs" />
     <Compile Include="Interfaces\ICommunicationClient.cs" />
+    <Compile Include="InternalPipeClient.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">

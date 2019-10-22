@@ -1,0 +1,14 @@
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\obj\Debug\MockPipelines.NamedPipeline.Form1.resources
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\obj\Debug\MockPipelines.NamedPipeline.Properties.Resources.resources
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\obj\Debug\ClientApplication.csproj.GenerateResource.cache
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\obj\Debug\ClientApplication.csproj.CoreCompileInputs.cache
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\obj\Debug\ClientApplication.csprojAssemblyReference.cache
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\bin\Debug\ClientApplication.exe.config
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\bin\Debug\ClientApplication.exe
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\bin\Debug\ClientApplication.pdb
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\bin\Debug\ClientPipeline.dll
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\bin\Debug\ClientPipeline.pdb
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\bin\Debug\ClientPipeline.dll.config
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\obj\Debug\ClientApplication.csproj.CopyComplete
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\obj\Debug\ClientApplication.exe
+C:\Users\jonbianco\source\repos\MockPipelines\ClientApplication\obj\Debug\ClientApplication.pdb

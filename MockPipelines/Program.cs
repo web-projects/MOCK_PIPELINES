@@ -12,8 +12,17 @@ namespace MockPipelines.NamedPipeline
             if (serverpipe != null)
             {
                 serverpipe.Start();
-                //serverpipe.SendMessage("message from server");
-                Thread.Sleep(10000000);
+                for (int index = 0; index < 100000; index++)
+                {
+                    Thread.Sleep(1000);
+
+                    if (serverpipe.ClientConnected())
+                    {
+                        Thread.Sleep(1000);
+                        serverpipe.SendMessage("message from server");
+                    }
+                }
+
                 serverpipe.Stop();
             }
         }
