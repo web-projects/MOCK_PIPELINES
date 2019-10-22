@@ -32,3 +32,4 @@ This an applicationto test NamedPipelines.
 
 * 20191020 - Initial repository.
 * 20191022 - Added bi-directional pipes.
+           - Completed bi-directional pipes.
