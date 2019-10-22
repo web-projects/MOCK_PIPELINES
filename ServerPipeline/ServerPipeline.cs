@@ -156,9 +156,9 @@ namespace MockPipelines.NamedPipeline
         #endregion
         
         /********************************************************************************************************/
-        // EVENTS SECTION
+        // IMPLEMENTATION SECTION
         /********************************************************************************************************/
-        #region -- ICommunicationServer implementation --
+        #region -- implementation --
 
         public string ServerId
         {

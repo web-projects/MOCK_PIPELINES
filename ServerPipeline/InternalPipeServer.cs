@@ -9,7 +9,7 @@ namespace MockPipelines.NamedPipeline
     internal class InternalPipeServer : ICommunicationServer
     {
         /********************************************************************************************************/
-        // ATTRIBUTES SECTION
+        // ATTRIBUTES
         /********************************************************************************************************/
         #region -- attributes --
 
@@ -27,7 +27,7 @@ namespace MockPipelines.NamedPipeline
         #endregion
 
         /********************************************************************************************************/
-        // PRIVATE FIELDS SECTION
+        // PRIVATE FIELDS
         /********************************************************************************************************/
         #region -- private fields --
 
@@ -46,7 +46,18 @@ namespace MockPipelines.NamedPipeline
         #endregion
 
         /********************************************************************************************************/
-        // CONSTRUCTOR SECTION
+        // EVENTS SECTION
+        /********************************************************************************************************/
+        #region -- events --
+
+        public event EventHandler<ClientConnectedEventArgs> ClientConnectedEvent;
+        public event EventHandler<ClientDisconnectedEventArgs> ClientDisconnectedEvent;
+        public event EventHandler<MessageReceivedEventArgs> MessageReceivedEvent;
+
+        #endregion
+
+        /********************************************************************************************************/
+        // CONSTRUCTOR
         /********************************************************************************************************/
         #region -- constructor --
 
@@ -60,84 +71,9 @@ namespace MockPipelines.NamedPipeline
         #endregion
 
         /********************************************************************************************************/
-        // EVENTS SECTION
-        /********************************************************************************************************/
-        #region events
-
-        public event EventHandler<ClientConnectedEventArgs> ClientConnectedEvent;
-        public event EventHandler<ClientDisconnectedEventArgs> ClientDisconnectedEvent;
-        public event EventHandler<MessageReceivedEventArgs> MessageReceivedEvent;
-
-        #endregion
-
-        /********************************************************************************************************/
-        // PUBLIC METHODS SECTION
-        /********************************************************************************************************/
-        #region public methods
-
-        public string ServerId
-        {
-            get { return Id; }
-        }
-
-        public void Start()
-        {
-            try
-            {
-                Console.WriteLine("server started. Waiting for client connection...");
-                _pipeServer.BeginWaitForConnection(WaitForConnectionCallBack, null);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex);
-                throw;
-            }
-        }
-
-        public void Stop()
-        {
-            _isStopping = true;
-
-            try
-            {
-                if (_pipeServer.IsConnected)
-                {
-                    _pipeServer.Disconnect();
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex);
-                throw;
-            }
-            finally
-            {
-                _pipeServer.Close();
-                _pipeServer.Dispose();
-            }
-        }
-
-        public void SendMessage(string message)
-        {
-            if (_pipeServer.IsConnected)
-            {
-                var info = new Info();
-
-                // Get the write bytes and append them
-                byte [] writeBytes = Encoding.ASCII.GetBytes(string.Format(displayText, message));
-                Array.Copy(writeBytes, writeBytes.GetLowerBound(0), info.Buffer, info.Buffer.GetLowerBound(0), writeBytes.Length);
-                info.StringBuilder.Append(Encoding.UTF8.GetString(info.Buffer, 0, writeBytes.Length));
-                BeginWrite(info);
-                Console.WriteLine($"server: message to client=[{message}]");
-            }
-        }
-
-        #endregion
-
-        /********************************************************************************************************/
         // PRIVATE METHODS SECTION
         /********************************************************************************************************/
-        #region private methods
+        #region -- private methods --
 
         private void EndReadCallBack(IAsyncResult result)
         {
@@ -260,6 +196,70 @@ namespace MockPipelines.NamedPipeline
             if (ClientDisconnectedEvent != null)
             {
                 ClientDisconnectedEvent(this, new ClientDisconnectedEventArgs {ClientId = Id});
+            }
+        }
+
+        #endregion
+
+        /********************************************************************************************************/
+        // IMPLEMENTATION SECTION
+        /********************************************************************************************************/
+        #region -- implementation --
+
+        public string ServerId
+        {
+            get { return Id; }
+        }
+
+        public void Start()
+        {
+            try
+            {
+                Console.WriteLine("server started. Waiting for client connection...");
+                _pipeServer.BeginWaitForConnection(WaitForConnectionCallBack, null);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+                throw;
+            }
+        }
+
+        public void Stop()
+        {
+            _isStopping = true;
+
+            try
+            {
+                if (_pipeServer.IsConnected)
+                {
+                    _pipeServer.Disconnect();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+                throw;
+            }
+            finally
+            {
+                _pipeServer.Close();
+                _pipeServer.Dispose();
+            }
+        }
+
+        public void SendMessage(string message)
+        {
+            if (_pipeServer.IsConnected)
+            {
+                var info = new Info();
+
+                // Get the write bytes and append them
+                byte[] writeBytes = Encoding.ASCII.GetBytes(string.Format(displayText, message));
+                Array.Copy(writeBytes, writeBytes.GetLowerBound(0), info.Buffer, info.Buffer.GetLowerBound(0), writeBytes.Length);
+                info.StringBuilder.Append(Encoding.UTF8.GetString(info.Buffer, 0, writeBytes.Length));
+                BeginWrite(info);
+                Console.WriteLine($"server: message to client=[{message}]");
             }
         }
 
