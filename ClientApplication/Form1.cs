@@ -41,9 +41,9 @@ namespace MockPipelines.NamedPipeline
         #endregion
 
         /********************************************************************************************************/
-        // METHODS SECTION
+        // IMPLEMENTATION SECTION
         /********************************************************************************************************/
-        #region -- METHODS --
+        #region -- IMPLEMENTATION --
 
         private void StartClientPipeline()
         {
@@ -121,7 +121,6 @@ namespace MockPipelines.NamedPipeline
             Application.Exit();
         }
 
-
         private void button2_Click(object sender, EventArgs e)
         {
             if (_clientpipe != null)
@@ -142,8 +141,6 @@ namespace MockPipelines.NamedPipeline
             }
         }
 
-        #endregion
-
         private void button4_Click(object sender, EventArgs e)
         {
             if (_clientpipe != null)
@@ -163,5 +160,7 @@ namespace MockPipelines.NamedPipeline
                 this.button5.Enabled = false;
             }
         }
+
+        #endregion
     }
 }
