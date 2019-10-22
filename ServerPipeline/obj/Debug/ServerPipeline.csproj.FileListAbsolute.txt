@@ -1,7 +1,0 @@
-C:\Users\jonbianco\source\repos\MockPipelines\ServerPipeline\bin\Debug\ServerPipeline.dll.config
-C:\Users\jonbianco\source\repos\MockPipelines\ServerPipeline\bin\Debug\ServerPipeline.dll
-C:\Users\jonbianco\source\repos\MockPipelines\ServerPipeline\bin\Debug\ServerPipeline.pdb
-C:\Users\jonbianco\source\repos\MockPipelines\ServerPipeline\obj\Debug\ServerPipeline.csproj.CoreCompileInputs.cache
-C:\Users\jonbianco\source\repos\MockPipelines\ServerPipeline\obj\Debug\ServerPipeline.dll
-C:\Users\jonbianco\source\repos\MockPipelines\ServerPipeline\obj\Debug\ServerPipeline.pdb
-C:\Users\jonbianco\source\repos\MockPipelines\ServerPipeline\obj\Debug\ServerPipeline.csprojAssemblyReference.cache
