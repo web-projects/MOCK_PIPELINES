@@ -4,7 +4,7 @@ This an applicationto test NamedPipelines.
 
 ### What is this repository for? ###
 
-* JSON File reader utility
+* NAMEDPIPELINES MOCK
 * 1.00.0.(100)
 * git remote add origin git@github.com:web-projects/MOCK_PIPELINES.git
 
