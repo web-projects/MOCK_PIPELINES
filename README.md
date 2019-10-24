@@ -1,10 +1,10 @@
 # README #
 
-This an applicationto test NamedPipelines.
+This an application to test NamedPipelines.
 
 ### What is this repository for? ###
 
-* NAMEDPIPELINES MOCK
+* MOCK PIPELINES
 * 1.00.0.(100)
 * git remote add origin git@github.com:web-projects/MOCK_PIPELINES.git
 
@@ -33,3 +33,4 @@ This an applicationto test NamedPipelines.
 * 20191020 - Initial repository.
 * 20191022 - Added bi-directional pipes.
            - Completed bi-directional pipes.
+* 20191024 - Added unit testing Nuget packages.
